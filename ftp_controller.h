@@ -25,7 +25,10 @@ class FTP_Controller : public QObject
     }
     void set_url(QString url);
     void set_logins(QString u, QString p);
-    void perform();
+    CURLcode perform();
+
+    void upload(QString source, QString destination);
+    void download(QString source, QString destination);
 
 public slots:
 

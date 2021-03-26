@@ -16,12 +16,16 @@ SOURCES += \
     ftp_controller.cpp \
     main.cpp \
     easyftp.cpp \
-    misc/loghelper.cpp
+    misc/loghelper.cpp \
+    ui/rclickmenu.cpp \
+    ui/tree.cpp
 
 HEADERS += \
     easyftp.h \
     ftp_controller.h \
-    misc/loghelper.h
+    misc/loghelper.h \
+    ui/rclickmenu.h \
+    ui/tree.h
 
 FORMS += \
     easyftp.ui

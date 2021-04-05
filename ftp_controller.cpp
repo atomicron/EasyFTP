@@ -25,6 +25,7 @@ void FTP_Controller::set_logins(QString u, QString p)
    set_option(CURLOPT_PASSWORD, p.toStdString().c_str());
 }
 
+#include <iostream>
 CURLcode FTP_Controller::perform()
 {
     return curl_easy_perform(curl_easy_handle);
@@ -41,7 +42,7 @@ static size_t upload_callback(void* ptr, size_t size, size_t nmemb, void* user)
 static size_t download_callback(void *ptr, size_t size, size_t nmemb, void *user)
 {
     size_t read = fwrite(ptr, size, nmemb, (FILE*)user);
-//    fclose((FILE*)user);
+    fclose((FILE*)user);
     return read;
 }
 

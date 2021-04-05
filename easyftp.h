@@ -26,7 +26,10 @@ class EasyFTP : public QMainWindow
     LH* lh;
     void ui_init();
     void update_remote_root_listing(QString data);
-    QString abs_remote_file_path(QModelIndex index);
+    // Returns the abs url ftp://host/path/to/file
+    QString absolute_remote_url(QModelIndex index);
+    // Returns abs path /path/to/file
+    QString absolute_remote_path(QModelIndex index);
 
 public slots:
     void log(QString str);

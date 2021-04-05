@@ -29,9 +29,7 @@ public:
     void mouseReleaseEvent(QMouseEvent *event)
     {
         QModelIndex index = indexAt(event->pos());
-        if (index.isValid()) { // qDebug () << "Emitting";
-            emit (itemClicked(index));
-        }
+        if (index.isValid()) emit (itemClicked(index));
     }
 
 signals:

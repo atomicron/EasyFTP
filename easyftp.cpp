@@ -19,7 +19,7 @@ static int debug_function(CURL *handle, curl_infotype type,	char *data, size_t s
         break;
     case CURLINFO_DATA_IN:
 //        qDebug () << "DATA IN\n"; // << data << '\n';
-        *(QString*) userp = QString(data);
+//        *(QString*) userp = QString(data);
         break;
     case CURLINFO_DATA_OUT:
 //        qDebug () << "DATA OUT\n"; // << data << '\n';
@@ -51,17 +51,16 @@ EasyFTP::EasyFTP(QWidget *parent)
 {
     ui->setupUi(this);
     ui_init();
+
+    // To log
     ftp->set_option(CURLOPT_VERBOSE, 1);
     ftp->set_option(CURLOPT_DEBUGFUNCTION, debug_function);
 
     // Feeding the log helper will emit a signal with a QString which we should put into a log
     connect (LH::get_instance(), SIGNAL(stack_changed(QString)), this, SLOT(log(QString)));
 
-//    ui->remote_tree->setSortingEnabled(true);
-
     ftp->set_option(CURLOPT_DIRLISTONLY, 1);
     ui->in_host->setText("127.0.0.1");
-//    ui->in_user->setText("localuser");
     ui->in_user->setText("test");
     ui->in_pass->setText("test");
 
@@ -74,21 +73,29 @@ EasyFTP::~EasyFTP()
 
 void EasyFTP::update_remote_root_listing(QString data)
 {
-//   qDebug () << "Data received: " << data;
-   QStringList directories = data.split("\r\n");
-   directories.pop_back();
-//   qDebug () << directories;
+   QStringList files = data.split("\r\n");
+   files.pop_back();
 
    remote_fs_model = new QStandardItemModel;
-   QStandardItem *parentItem = remote_fs_model->invisibleRootItem();
 
-   for (auto x : directories)
+   QStandardItem *root = new QStandardItem("/");
+   remote_fs_model->appendRow(root);
+
+//   QStandardItem *parentItem = remote_fs_model->invisibleRootItem();
+
+   for (auto x : files)
    {
        QStandardItem* item = new QStandardItem(x);
-       parentItem->appendRow(item);
+       root->appendRow(item);
    }
 
    remote_tree->tv->setModel(remote_fs_model);
+}
+
+static size_t write_foo(void *ptr, size_t size, size_t nmemb, void *data)
+{
+    *(QString*)data = QString((char*)ptr);
+    return size * nmemb;
 }
 
 void EasyFTP::on_btn_connect_clicked()
@@ -105,7 +112,8 @@ void EasyFTP::on_btn_connect_clicked()
     ftp->set_logins(u, pass);
 
     QString data;
-    ftp->set_option(CURLOPT_DEBUGDATA, &data);
+    ftp->set_option(CURLOPT_WRITEFUNCTION, write_foo);
+    ftp->set_option(CURLOPT_WRITEDATA, &data);
     ftp->perform();
 
     update_remote_root_listing(data);
@@ -128,6 +136,7 @@ void EasyFTP::ui_init()
     local_fs_model = new QFileSystemModel;
     local_fs_model->setRootPath(QDir::currentPath());
     local_tree->tv->setModel(local_fs_model);
+    local_tree->le->setEnabled(false);
 
     // Add Right Click Menu to the local_tree
     RClickMenu *local_rclick_menu = new RClickMenu;
@@ -144,6 +153,7 @@ void EasyFTP::ui_init()
     remote_list = new QListWidget(this);
     ui->splitter_remote->addWidget(remote_tree);
     ui->splitter_remote->addWidget(remote_list);
+    remote_tree->le->setEnabled(false);
 
     // Fill remote tree
     // ???
@@ -191,7 +201,7 @@ void EasyFTP::localTreeItemUploadClicked()
 
     // Enable downloading action since we've clicked a path locally
     QString dest;
-//    dest = abs_remote_file_path(remote_tree->selectedItem());
+    //    dest = abs_remote_file_path(remote_tree->selectedItem());
     dest = remote_tree->le->text();
     if (!dest.endsWith('/')) dest += "/";
     dest += info.fileName();
@@ -203,17 +213,36 @@ void EasyFTP::localTreeItemUploadClicked()
     ftp->set_option(CURLOPT_UPLOAD, 0);
 }
 
-QString EasyFTP::abs_remote_file_path(QModelIndex index)
+// ABS PATH
+// AND ABS URL should be two functions
+
+QString EasyFTP::absolute_remote_url(QModelIndex index)
+{
+    QString host_without_slash = host;
+    if (host_without_slash.endsWith("/")) host_without_slash.remove(host_without_slash.length() - 1, 1);
+
+    QString path = absolute_remote_path(index);
+    if (path == "/") path = ""; // special case when the root dir is selected
+//    qDebug () << "Returning abs url: " << host_without_slash + path;
+    return host_without_slash + path;
+}
+
+QString EasyFTP::absolute_remote_path(QModelIndex index)
 // returns abs path of the file without a trailing slash
 {
     QString abs_file_path = "";
-    abs_file_path += host;
     QString path = remote_fs_model->data(index).toString();
     while (index.parent().isValid()) {
         index = index.parent();
-        path = remote_fs_model->data(index).toString() + "/" + path;
+        QString parent_name = remote_fs_model->data(index).toString();
+        if (parent_name == "/") {
+            path =  parent_name + path;
+        } else {
+            path =  parent_name + "/" + path;
+        }
     }
     abs_file_path += path;
+//    qDebug () << "Returning abs path: " << abs_file_path;
     return abs_file_path;
 }
 
@@ -221,63 +250,68 @@ void EasyFTP::remoteTreeItemClicked(QModelIndex index)
 {
     action_upload->setEnabled(true);
 
-    QStack<int> stack;
-
     QModelIndex temp = index;
+    QStack<int> stack;
     while (temp.isValid()) {
-       stack.push_back(temp.row());
-       temp = temp.parent();
+        stack.push_back(temp.row());
+        temp = temp.parent();
     }
+    // ^ ???
 
-    // query the server
-    // if the url has children, add them to the index
-    QString abs_path = abs_remote_file_path(index);
+    // abs URL
+    QString abs_path = absolute_remote_url(index);
 
-    // query remote abs path
-    if (!abs_path.endsWith("/"))
-        abs_path += "/";
-
-    ftp->set_option(CURLOPT_DIRLISTONLY, 1);
-
+    abs_path += "/";
+    qDebug() << "Making request to: " << abs_path;
     ftp->set_url(abs_path);
     QString data;
-    ftp->set_option(CURLOPT_DEBUGDATA, &data);
+//    ftp->set_option(CURLOPT_DEBUGDATA, &data);
+    ftp->set_option(CURLOPT_WRITEDATA, &data);
     CURLcode reslt = ftp->perform();
     qDebug () << "Result is " << reslt;
 
-    if (reslt == CURLE_OK) { // no error
-        if (abs_path.endsWith("/"))
-            abs_path.remove(abs_path.length()-1, 1);
-    } else if (reslt == CURLE_REMOTE_ACCESS_DENIED) { // 9, can't access "dir"
-        abs_path.remove(abs_path.length()-1, 1);
-        int i = abs_path.lastIndexOf("/");
-        abs_path.remove(i, abs_path.length()-i);
+    if (reslt != CURLE_OK)
+    // if result not OK, assume it's a file (remove slash)
+    {
+        qDebug () << "Assuming file, removing slash";
+        abs_path.remove(abs_path.length()-1, 1); //"/";
+        qDebug() << "Making request to: " << abs_path;
+        ftp->set_url(abs_path);
+        reslt = ftp->perform();
+
+        if (reslt == CURLE_OK)
+        {
+            qDebug () << "File conn successful";
+        }
+        else
+        {
+            qDebug () << "Error, cannot file: " << reslt;
+        }
     }
+    else
+    {
+        QStringList contents = data.split("\r\n");
+        contents.pop_back();
 
-    // populate the dir if it's a dir ;D
-    QStringList directories = data.split("\r\n");
-    directories.pop_back();
-
-    //    qDebug () << "Directories : " << directories;
-
-    // get to the proper item by traversing using the stack
-    if (stack.count()) {
-        QStandardItem *parent = remote_fs_model->item(stack.back());
-        stack.pop_back();
-        while (stack.count()) {
-            parent = parent->child(stack.back());
+        // get to the proper item by traversing using the stack
+        // ^ ???
+        if (stack.count())
+        {
+            QStandardItem *parent = remote_fs_model->item(stack.back());
             stack.pop_back();
-        }
-
-        if (parent->hasChildren()) {
-            parent->removeRows(0, parent->rowCount()-1);
-        }
-
-        if (directories.count())
-            for (auto x : directories) {
-                parent->appendRow(new QStandardItem(x));
+            while (stack.count()) {
+                parent = parent->child(stack.back());
+                stack.pop_back();
             }
-        remote_tree->le->setText(abs_path);
+
+            if (!parent->hasChildren())
+                if (contents.count())
+                    for (auto x : contents)
+                        parent->appendRow(new QStandardItem(x));
+
+            remote_tree->le->setText(abs_path);
+        }
+
     }
 }
 
@@ -287,14 +321,14 @@ void EasyFTP::remoteTreeItemDownloadClicked()
     // try to get path of the indexed item lol
     //    qDebug () << remote_fs_model->data(remote_tree->selectedItem());
 
-    QString abs = abs_remote_file_path(remote_tree->selectedItem());
+    QString abs = absolute_remote_path(remote_tree->selectedItem());
     int i = abs.lastIndexOf("/");
     QString filename = abs.right(abs.length() -i-1);
     qDebug () << "Filename" << filename;
     qDebug () << abs;
 
-//    QFileInfo info = local_fs_model->fileInfo(local_tree->selectedItem());
-//    QString dest = info.absolutePath();
+    //    QFileInfo info = local_fs_model->fileInfo(local_tree->selectedItem());
+    //    QString dest = info.absolutePath();
     QString dest = local_tree->le->text();
     if (!dest.endsWith("/"))
         dest += '/';
@@ -305,74 +339,3 @@ void EasyFTP::remoteTreeItemDownloadClicked()
     ftp->download(abs, dest);
     ftp->perform();
 }
-
-
-//void EasyFTP::update_listing(QTreeWidgetItem* item, int col)
-//{
-////    if (item->queried)
-////        return;
-
-////    item->queried = true;
-
-//    QString url_add = "";
-//    QTreeWidgetItem *parent;
-//    QTreeWidgetItem *current;
-//    current = item;
-//    while (parent = current->parent()) {
-//        QString line = parent->text(0);
-//        QStringList list = line.split(" ", Qt::SkipEmptyParts);
-
-//        for (int i = 0; i<8; ++i) {
-//            list.pop_front();
-//        }
-//        QString name="";
-//        for (int i=0; i<list.count(); ++i)
-//            name += list[i];
-
-//        url_add = name + "/" + url_add;
-
-//        current = parent;
-//        parent = current->parent();
-
-//    }
-
-//    url = host + url_add;
-
-
-//    QString text = item->text(col);
-//    //drwxr-xr-x 1 ftp ftp              0 Mar 16 16:51 filezilla-3.53.0
-//    //          1 2   3    4             5   6  7     8
-//    bool is_dir;
-//    QStringList list = text.split(" ", Qt::SkipEmptyParts);
-//    if (list.front().startsWith("d"))
-//        is_dir = true;
-//    else
-//        is_dir = false;
-
-//    for (int i = 0; i<8; ++i) {
-//        list.pop_front();
-//    }
-//    QString name="";
-//    for (int i=0; i<list.count(); ++i)
-//        name += list[i];
-
-//    if (is_dir) {
-//        url += name + "/";
-//        qDebug () << "URL is now: " << url;
-//        ftp->set_url(url);
-//        QString data;
-//        ftp->set_option(CURLOPT_DEBUGDATA, &data);
-//        ftp->perform();
-//        update_listing(item, data);
-//    }
-//}
-
-//void EasyFTP::update_listing(QTreeWidgetItem* item, QString data)
-//{
-//    QStringList directories = data.split("\r\n");
-//    directories.pop_back();
-//    for (auto x : directories) {
-//        item->addChild(new QTreeWidgetItem(QStringList(x)));
-//        directories.pop_front();
-//    }
-//}

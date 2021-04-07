@@ -41,6 +41,7 @@ static size_t upload_callback(void* ptr, size_t size, size_t nmemb, void* user)
 
 static size_t download_callback(void *ptr, size_t size, size_t nmemb, void *user)
 {
+//    qDebug () << "ptr of download file: " << (char*)ptr;
     size_t read = fwrite(ptr, size, nmemb, (FILE*)user);
     fclose((FILE*)user);
     return read;
@@ -65,11 +66,13 @@ void FTP_Controller::download(QString source, QString destination)
     set_option(CURLOPT_URL, source.toStdString().c_str());
     set_option(CURLOPT_WRITEFUNCTION, download_callback);
     set_option(CURLOPT_FTP_USE_EPSV, 1);
+    set_option(CURLOPT_DIRLISTONLY, 0);
     FILE* file = fopen(destination.toStdString().c_str(), "wb");
 //    fopen_s(&file, dest.c_str(), "wb");
 //    fclose(file);
     set_option(CURLOPT_WRITEDATA, (void*) file);
-    QString data;
-    set_option(CURLOPT_DEBUGDATA, &data);
+//    QString data;
+//    set_option(CURLOPT_DEBUGDATA, &data);
     set_option(CURLOPT_FTP_USE_EPSV, 0);
+//    set_option(CURLOPT_DIRLISTONLY, 1);
 }

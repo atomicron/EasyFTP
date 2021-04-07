@@ -109,6 +109,9 @@
       </widget>
      </widget>
     </item>
+    <item>
+     <widget class="QTextEdit" name="queue"/>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">

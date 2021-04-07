@@ -30,6 +30,8 @@ class FTP_Controller : public QObject
     void upload(QString source, QString destination);
     void download(QString source, QString destination);
 
+    void clear_all_settings() { curl_easy_reset(curl_easy_handle); }
+
 public slots:
 
 signals:

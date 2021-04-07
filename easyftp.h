@@ -9,6 +9,7 @@
 #include <QFileSystemModel>
 #include <QStandardItemModel>
 #include <QDebug>
+#include <misc/queue.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class EasyFTP; }
@@ -37,6 +38,7 @@ public slots:
     void localTreeItemUploadClicked();
     void remoteTreeItemClicked(QModelIndex);
     void remoteTreeItemDownloadClicked();
+    void perform_queue();
 
 public:
     EasyFTP(QWidget *parent = nullptr);
@@ -52,6 +54,7 @@ private:
     FTP_Controller *ftp;
     QFileSystemModel *local_fs_model;
     QStandardItemModel* remote_fs_model;
+    Queue queue;
 
 private:
     Tree* local_tree;

@@ -16,16 +16,20 @@ SOURCES += \
     ftp_controller.cpp \
     main.cpp \
     easyftp.cpp \
+    misc/helpers.cpp \
     misc/loghelper.cpp \
     misc/queue.cpp \
+    ui/contentslist.cpp \
     ui/rclickmenu.cpp \
     ui/tree.cpp
 
 HEADERS += \
     easyftp.h \
     ftp_controller.h \
+    misc/helpers.h \
     misc/loghelper.h \
     misc/queue.h \
+    ui/contentslist.h \
     ui/rclickmenu.h \
     ui/tree.h
 

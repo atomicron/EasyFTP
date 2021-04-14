@@ -87,30 +87,33 @@
      </layout>
     </item>
     <item>
-     <widget class="QSplitter" name="splitter_upper">
+     <widget class="QSplitter" name="splitter">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QTextEdit" name="log"/>
-      <widget class="QSplitter" name="splitter_lower">
+      <widget class="QSplitter" name="splitter_upper">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Vertical</enum>
        </property>
-       <widget class="QSplitter" name="splitter_local">
+       <widget class="QTextEdit" name="log"/>
+       <widget class="QSplitter" name="splitter_lower">
         <property name="orientation">
-         <enum>Qt::Vertical</enum>
+         <enum>Qt::Horizontal</enum>
         </property>
-       </widget>
-       <widget class="QSplitter" name="splitter_remote">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
+        <widget class="QSplitter" name="splitter_local">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
+        <widget class="QSplitter" name="splitter_remote">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
        </widget>
       </widget>
+      <widget class="QTextEdit" name="queue"/>
      </widget>
-    </item>
-    <item>
-     <widget class="QTextEdit" name="queue"/>
     </item>
    </layout>
   </widget>

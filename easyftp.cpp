@@ -127,8 +127,6 @@ void EasyFTP::on_btn_connect_clicked()
     remote_tree->tv->setExpanded(root_index, true);
     // to enable upload, now that the root at least is selected
     action_upload->setEnabled(true);
-    action_download->setEnabled(true);
-
 }
 
 void EasyFTP::ui_init()
@@ -162,7 +160,7 @@ void EasyFTP::ui_init()
     // Add Right Click Menu to local_list
     RClickMenu* local_contents_menu = new RClickMenu;
     action_upload_items = new QAction("Upload", local_contents_menu);
-    action_upload_items->setEnabled(true);
+    action_upload_items->setEnabled(false);
     local_contents_menu->addAction(action_upload_items);
     local_list->add_rclick_menu(local_contents_menu);
     connect(action_upload_items, SIGNAL(triggered(bool)), this, SLOT(localListUploadClicked()));
@@ -188,7 +186,7 @@ void EasyFTP::ui_init()
     // add context menu for contents
     RClickMenu* remote_contents_menu = new RClickMenu;
     action_download_items = new QAction("Download", remote_contents_menu);
-    action_download_items->setEnabled(true);
+    action_download_items->setEnabled(false);
     remote_contents_menu->addAction(action_download_items);
     remote_list->add_rclick_menu(remote_contents_menu);
     connect(action_download_items, SIGNAL(triggered(bool)), this, SLOT(remoteListDownloadClicked()));

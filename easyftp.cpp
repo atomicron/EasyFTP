@@ -58,7 +58,6 @@ EasyFTP::EasyFTP(QWidget *parent)
     ui->setupUi(this);
     ui_init();
 
-
     // Feeding the log helper will emit a signal with a QString which we should put into a log
     connect (LH::get_instance(), SIGNAL(stack_changed(QString)), this, SLOT(log(QString)));
 
@@ -67,7 +66,6 @@ EasyFTP::EasyFTP(QWidget *parent)
     ui->in_pass->setText("test");
 
     connect (&queue, SIGNAL(list_changed()), this, SLOT(perform_queue()));
-
 }
 
 EasyFTP::~EasyFTP()
@@ -216,7 +214,6 @@ QString EasyFTP::absolute_remote_url(QModelIndex index)
 
     QString path = absolute_remote_path(index);
     if (path == "/") path = ""; // special case when the root dir is selected
-    //    qDebug () << "Returning abs url: " << host_without_slash + path;
     return host_without_slash + path;
 }
 
@@ -235,7 +232,6 @@ QString EasyFTP::absolute_remote_path(QModelIndex index)
         }
     }
     abs_file_path += path;
-    //    qDebug () << "Returning abs path: " << abs_file_path;
     return abs_file_path;
 }
 
@@ -246,7 +242,6 @@ void EasyFTP::localTreeItemClicked(QModelIndex index)
 
     if (info.isDir()) {
         local_tree->le->setText(path);
-        // fill contents_list with contents
         QStringList contents = QDir(path).entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
         local_list->clear();
         local_list->addItems(contents);
@@ -273,7 +268,6 @@ void EasyFTP::localListUploadClicked()
     QString local_path = local_tree->le->text();
     QString remote_path = remote_tree->le->text();
     for (QListWidgetItem *item : local_list->selectedItems())
-//  For each item selected, call
         add_for_upload(local_path, item->text(), remote_path);
 }
 

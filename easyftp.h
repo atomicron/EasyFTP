@@ -2,14 +2,16 @@
 #define EASYFTP_H
 
 #include <QMainWindow>
-#include "ftp_controller.h"
-#include "misc/loghelper.h"
-#include "ui/tree.h"
-#include "ui/contentslist.h"
-#include <QListWidget>
+
 #include <QFileSystemModel>
 #include <QStandardItemModel>
-#include <QDebug>
+
+#include "ftp_controller.h"
+
+#include "ui/tree.h"
+#include "ui/contentslist.h"
+
+#include "misc/loghelper.h"
 #include <misc/queue.h>
 #include <misc/helpers.h>
 
@@ -26,15 +28,17 @@ class EasyFTP : public QMainWindow
     // URL is formed by the host + path we want/need/are. Directories should end in trailing slack, files - without
     QString url;
 
-    LH* lh;
-    void ui_init();
-//    void update_remote_root_listing(QString data);
     // Returns the abs url ftp://host/path/to/file
     QString absolute_remote_url(QModelIndex index);
     // Returns abs path /path/to/file
     QString absolute_remote_path(QModelIndex index);
 
+    LH* lh;
+    void ui_init();
 
+public:
+    EasyFTP(QWidget *parent = nullptr);
+    ~EasyFTP();
 
 public slots:
     void log(QString str);
@@ -44,14 +48,11 @@ public slots:
     void remoteTreeItemClicked(QModelIndex);
     void remoteTreeItemDownloadClicked();
     void remoteListDownloadClicked();
-    void perform_queue();
 
     void add_for_upload(QString local_path, QString filename, QString remote_url);
     void add_for_download(QString remote_url, QString filename, QString local_path);
 
-public:
-    EasyFTP(QWidget *parent = nullptr);
-    ~EasyFTP();
+    void perform_queue();
 
 private slots:
     void on_btn_connect_clicked();
@@ -60,7 +61,7 @@ private:
     Ui::EasyFTP *ui;
     FTP_Controller *ftp;
     QFileSystemModel *local_fs_model;
-    QStandardItemModel* remote_fs_model;
+    QStandardItemModel* remote_fs_model = nullptr;
     Queue queue;
 
 private:

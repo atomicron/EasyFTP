@@ -5,6 +5,7 @@
 
 #include <QFileSystemModel>
 #include <QStandardItemModel>
+#include <QFileIconProvider>
 
 #include "ftp_controller.h"
 

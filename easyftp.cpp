@@ -1,6 +1,10 @@
 #include "easyftp.h"
 #include "ui_easyftp.h"
 
+const QString ICON_NORMAL = ":/icons/icon_dir_normal.png";
+const QString ICON_UNKNOWN = ":/icons/icon_dir_unknown.png";
+const QString ICON_FILE = ":/icons/icon_file_normal.png";
+
 static int debug_function(CURL *handle, curl_infotype type,	char *data, size_t size, void *userp)
 // must return 0
 {
@@ -110,6 +114,7 @@ void EasyFTP::on_btn_connect_clicked()
     if (remote_fs_model) delete remote_fs_model;
     remote_fs_model = new QStandardItemModel;
     QStandardItem *root = new QStandardItem("/");
+    root->setIcon(QIcon(ICON_NORMAL));
     remote_fs_model->appendRow(root);
     remote_tree->tv->setModel(remote_fs_model);
 
@@ -127,6 +132,7 @@ void EasyFTP::on_btn_connect_clicked()
     remote_tree->tv->setExpanded(root_index, true);
     // to enable upload, now that the root at least is selected
     action_upload->setEnabled(true);
+    action_upload_items->setEnabled(true);
 }
 
 void EasyFTP::ui_init()
@@ -242,12 +248,18 @@ void EasyFTP::localTreeItemClicked(QModelIndex index)
         local_tree->le->setText(path);
         QStringList contents = QDir(path).entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
         local_list->clear();
-        local_list->addItems(contents);
+
+        for (auto item : contents)
+        {
+            QIcon item_icon = QFileIconProvider().icon(path+item);
+            local_list->addItem(new QListWidgetItem(item_icon, item));
+        }
     } else {
         local_tree->le->setText(path);
     }
 
     action_download->setEnabled(true);
+    action_download_items->setEnabled(true);
 
     local_tree->tv->resizeColumnToContents(0);
 }
@@ -353,7 +365,17 @@ void EasyFTP::remoteTreeItemClicked(QModelIndex index)
 
         // Fill contents list
         remote_list->clear();
-        remote_list->addItems(contents);
+        for (auto item : contents)
+        {
+            if (ftp->is_directory(add_trailing_slash(abs_remote_url)+item))
+            {
+                remote_list->addItem(new QListWidgetItem(QIcon(ICON_NORMAL), item));
+            }
+            else
+            {
+                remote_list->addItem(new QListWidgetItem(QIcon(ICON_FILE), item));
+            }
+        }
 
         // get to the proper item by traversing using the stack
         if (stack.count())
@@ -362,6 +384,7 @@ void EasyFTP::remoteTreeItemClicked(QModelIndex index)
             stack.pop_back();
             while (stack.count()) {
                 parent = parent->child(stack.back());
+                parent->setIcon(QIcon(ICON_NORMAL));
                 stack.pop_back();
             }
 
@@ -371,7 +394,7 @@ void EasyFTP::remoteTreeItemClicked(QModelIndex index)
                 {
                     if (ftp->is_directory(add_trailing_slash(abs_remote_url) + x))
                     {
-                        parent->appendRow(new QStandardItem(x));
+                        parent->appendRow(new QStandardItem(QIcon(ICON_UNKNOWN), x));
                     }
                 }
             }

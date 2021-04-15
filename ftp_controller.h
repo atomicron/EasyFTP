@@ -15,9 +15,8 @@ class FTP_Controller : public QObject
     EasyFTP *eftp;
     FILE *local_file;
 
-
-    public:
-        explicit FTP_Controller(EasyFTP *parent = nullptr);
+public:
+    explicit FTP_Controller(EasyFTP *parent = nullptr);
     ~FTP_Controller();
 
     template<typename T>

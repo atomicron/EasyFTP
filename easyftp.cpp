@@ -153,6 +153,7 @@ void EasyFTP::ui_init()
     local_fs_model->setRootPath(QDir::currentPath());
     local_tree->tv->setModel(local_fs_model);
     local_tree->le->setEnabled(false);
+    local_tree->tv->setAnimated(true);
 
     // Add Right Click Menu to the local_tree
     RClickMenu *local_rclick_menu = new RClickMenu;
@@ -175,6 +176,37 @@ void EasyFTP::ui_init()
     // Remote site: tree and list
     remote_tree = new Tree(this);
     remote_tree->l->setText("Remote site:");
+    remote_tree->tv->setAnimated(true);
+    remote_tree->tv->setExpandsOnDoubleClick(true);
+    remote_tree->tv->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    QString tree_style_sheet =
+        "QTreeView::branch:has-siblings:!adjoins-item {"
+        "	border-image: url(:/icons/dotted_line.png) 0;"
+        "}"
+
+        "QTreeView::branch:has-siblings:adjoins-item {"
+        "	border-image: url(:/icons/dotted_line_child.png) 0;"
+        "}"
+
+//        "QTreeView::branch:!has-children:!has-siblings:adjoins-item {"
+//        "	border-image: url(branch-end.png) 0;"
+//        "}"
+
+        "QTreeView::branch:has-children:!has-siblings:closed,"
+        "QTreeView::branch:closed:has-children:has-siblings {"
+        "	border-image: none;"
+        "	image: url(:/icons/parent_closed.png);"
+        "}"
+
+        "QTreeView::branch:open:has-children:!has-siblings,"
+        "QTreeView::branch:open:has-children:has-siblings  {"
+        "	border-image: none;"
+        "	image: url(:/icons/parent_opened.png);"
+        "}"
+    ;
+    remote_tree->tv->setStyleSheet(tree_style_sheet);
+    local_tree->tv->setStyleSheet(tree_style_sheet);
+
     remote_list = new ContentsList(this);
     ui->splitter_remote->addWidget(remote_tree);
     ui->splitter_remote->addWidget(remote_list);

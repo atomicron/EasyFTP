@@ -71,6 +71,8 @@ void FTP_Controller::upload(QString source, QString destination)
     curl_multi_add_handle(curl_multi_handle, handle->handle);
     curl_multi_perform(curl_multi_handle, &running_handles);
 
+    handle->id = eftp->queue_append(source, destination);
+
     easy_handles.push_back(handle);
 }
 
@@ -91,6 +93,8 @@ void FTP_Controller::download(QString source, QString destination)
 
     curl_multi_add_handle(curl_multi_handle, handle->handle);
     curl_multi_perform(curl_multi_handle, &running_handles);
+
+    handle->id = eftp->queue_append(source, destination);
 
     easy_handles.push_back(handle);
 }
@@ -166,6 +170,7 @@ bool FTP_Controller::mkdir(QString str)
     return false;
 }
 
+#include<QTableWidgetItem>
 void FTP_Controller::multi_perform()
 {
     curl_multi_perform(curl_multi_handle, &running_handles);
@@ -191,6 +196,7 @@ void FTP_Controller::multi_perform()
             curl_easy_cleanup(m->easy_handle);
             curl_multi_perform(curl_multi_handle, &running_handles);
             // tell the log it's done
+            eftp->queue_set(easy_handles[counter]->id, 2, "DONE");
 
             easy_handles.erase(easy_handles.begin() + counter);
         }

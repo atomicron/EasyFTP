@@ -15,6 +15,7 @@ class FTP_Controller : public QObject
     CURLM* curl_multi_handle;
 
     struct MyStruct {
+        int id;
         CURL* handle;
         FILE* file;
     };

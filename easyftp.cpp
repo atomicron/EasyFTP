@@ -234,7 +234,9 @@ void EasyFTP::ui_init()
     connect(action_download_items, SIGNAL(triggered(bool)), this, SLOT(remoteListDownloadClicked()));
     remote_list->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-
+    // Queue
+    ui->queue->setColumnCount(3);
+    ui->queue->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
 
 void EasyFTP::log(QString str)
@@ -521,18 +523,22 @@ void EasyFTP::queue_changed()
 
 int EasyFTP::queue_append(QString src, QString dest)
 {
-    ui->queue->append(
-                src +
-                "\t>\t" +
-                dest
-                );
-    // return the ID in table
-    return 0;
+    int i = ui->queue->rowCount();
+    ui->queue->insertRow(i);
+
+    QTableWidgetItem *newItem = new QTableWidgetItem(src);
+    QTableWidgetItem *newItem2 = new QTableWidgetItem(dest);
+    QTableWidgetItem *newItem3 = new QTableWidgetItem("IN QUEUE");
+    ui->queue->setItem(i, 0, newItem);
+    ui->queue->setItem(i, 1, newItem2);
+    ui->queue->setItem(i, 2, newItem3);
+
+    return i;
 }
 
-void EasyFTP::queue_at(int n)
+void EasyFTP::queue_set(int r, int c, QString text)
 {
-    // return the row in table,
+    ui->queue->setItem(r,c,new QTableWidgetItem(text));
 }
 
 void EasyFTP::perform_queue()

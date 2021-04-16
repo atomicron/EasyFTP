@@ -57,7 +57,7 @@ public slots:
     void queue_changed();
 
     int queue_append(QString src, QString dest);
-    void queue_at(int n);
+    void queue_set(int r, int c, QString text);
 
 private slots:
     void on_btn_connect_clicked();

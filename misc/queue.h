@@ -22,6 +22,7 @@ public:
     const QList<Item>& list() { return queue; }
     auto front() { return queue.front(); }
     void pop_front() { queue.pop_front(); }
+    auto size() const { return queue.size(); }
 
 signals:
     void list_changed();

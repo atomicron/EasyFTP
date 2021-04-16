@@ -12,12 +12,21 @@ class FTP_Controller : public QObject
     Q_OBJECT
 
     CURL* curl_easy_handle;
-    EasyFTP *eftp;
-    FILE *local_file;
+    CURLM* curl_multi_handle;
+
+    struct MyStruct {
+        CURL* handle;
+        FILE* file;
+    };
+
+    std::vector<MyStruct*> easy_handles;
 
 public:
     explicit FTP_Controller(EasyFTP *parent = nullptr);
     ~FTP_Controller();
+
+//    int num_handles=0;
+    int running_handles = 0;
 
     template<typename T>
     CURLcode set_option(CURLoption opt, T par)
@@ -28,19 +37,18 @@ public:
     void set_logins(QString u, QString p);
     CURLcode perform();
 
-    bool upload(QString source, QString destination);
-    bool download(QString source, QString destination);
+    void upload(QString source, QString destination);
+    void download(QString source, QString destination);
 
     QStringList get_directory_listing(QString url);
     bool is_directory(QString url);
-//    bool is_file(QString url);
     bool mkdir(QString str);
 
     void clear_all_settings() { curl_easy_reset(curl_easy_handle); }
+    void multi_perform();
 
-public slots:
-
-signals:
+private:
+    EasyFTP *eftp;
 
 };
 

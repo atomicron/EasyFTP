@@ -1,16 +1,21 @@
 #include "ftp_controller.h"
 #include "easyftp.h"
 
+#include <iostream>
+
 FTP_Controller::FTP_Controller(EasyFTP *parent)
 : QObject(parent)
 , eftp(parent)
 {
     curl_global_init(CURL_GLOBAL_ALL);
-    curl_easy_handle = curl_easy_init();}
+    curl_easy_handle = curl_easy_init();
+    curl_multi_handle = curl_multi_init();
+}
 
 FTP_Controller::~FTP_Controller()
 {
     curl_easy_cleanup(curl_easy_handle);
+    curl_multi_cleanup(curl_multi_handle);
 }
 
 void FTP_Controller::set_url(QString url)
@@ -24,7 +29,6 @@ void FTP_Controller::set_logins(QString u, QString p)
    set_option(CURLOPT_PASSWORD, p.toStdString().c_str());
 }
 
-#include <iostream>
 CURLcode FTP_Controller::perform()
 {
     return curl_easy_perform(curl_easy_handle);
@@ -35,14 +39,14 @@ static size_t upload_callback(void* ptr, size_t size, size_t nmemb, void* user)
     /* copy as much data as possible into
      * the 'ptr' buffer, but no more than
      * 'size' * 'nmemb' bytes! */
-    size_t written = fread(ptr, size, nmemb, (FILE*)user);
-    return written;
+    size_t read = fread(ptr, size, nmemb, (FILE*)user);
+    return read;
 }
 
 static size_t download_callback(void *ptr, size_t size, size_t nmemb, void *user)
 {
-    size_t read = fwrite(ptr, size, nmemb, (FILE*)user);
-    return read;
+    size_t written = fwrite(ptr, size, nmemb, (FILE*)user);
+    return written;
 }
 
 static size_t cb_nothing(void *ptr, size_t size, size_t nmemb, void *data)
@@ -50,51 +54,45 @@ static size_t cb_nothing(void *ptr, size_t size, size_t nmemb, void *data)
     return size * nmemb;
 }
 
-bool FTP_Controller::upload(QString source, QString destination)
+void FTP_Controller::upload(QString source, QString destination)
 {
-    CURL* handle = curl_easy_duphandle(curl_easy_handle);
-    if (!handle) throw std::runtime_error("Invalid duphandle");
+    MyStruct* handle = new MyStruct;
+    handle->handle = curl_easy_duphandle(curl_easy_handle);
+    if (!handle->handle) throw std::runtime_error("Invalid duphandle");
 
-    curl_easy_setopt(handle, CURLOPT_READFUNCTION, upload_callback);
-    curl_easy_setopt(handle, CURLOPT_UPLOAD, 1);
-    curl_easy_setopt(handle, CURLOPT_URL, destination.toStdString().c_str());
-    curl_easy_setopt(handle, CURLOPT_FTP_USE_EPSV , 1);
-    local_file = fopen(source.toStdString().c_str(), "rb");
-    curl_easy_setopt(handle, CURLOPT_READDATA, (void*) local_file);
-    curl_easy_setopt(handle, CURLOPT_FTP_USE_EPSV , 0);
+    curl_easy_setopt(handle->handle, CURLOPT_READFUNCTION, upload_callback);
+    curl_easy_setopt(handle->handle, CURLOPT_UPLOAD, 1);
+    curl_easy_setopt(handle->handle, CURLOPT_URL, destination.toStdString().c_str());
+    curl_easy_setopt(handle->handle, CURLOPT_FTP_USE_EPSV , 1);
+    handle->file = fopen(source.toStdString().c_str(), "rb");
+    curl_easy_setopt(handle->handle, CURLOPT_READDATA, (void*) handle->file);
+    curl_easy_setopt(handle->handle, CURLOPT_FTP_USE_EPSV , 0);
 
-    CURLcode result = curl_easy_perform(handle);
-    curl_easy_cleanup(handle);
+    curl_multi_add_handle(curl_multi_handle, handle->handle);
+    curl_multi_perform(curl_multi_handle, &running_handles);
 
-    fclose(local_file);
-
-    if (result == CURLE_OK)
-        return true;
-    return false;
+    easy_handles.push_back(handle);
 }
 
-bool FTP_Controller::download(QString source, QString destination)
+void FTP_Controller::download(QString source, QString destination)
 {
-    CURL* handle = curl_easy_duphandle(curl_easy_handle);
-    if (!handle) throw std::runtime_error("Invalid duphandle");
+    MyStruct* handle = new MyStruct;
+    handle->handle = curl_easy_duphandle(curl_easy_handle);
+    if (!handle->handle) throw std::runtime_error("Invalid duphandle");
 
-    curl_easy_setopt(handle, CURLOPT_UPLOAD, 0);
-    curl_easy_setopt(handle, CURLOPT_URL, source.toStdString().c_str());
-    curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, download_callback);
-    curl_easy_setopt(handle, CURLOPT_FTP_USE_EPSV, 1);
-    curl_easy_setopt(handle, CURLOPT_DIRLISTONLY, 0);
-    local_file = fopen(destination.toStdString().c_str(), "wb");
-    curl_easy_setopt(handle, CURLOPT_WRITEDATA, (void*) local_file);
-    curl_easy_setopt(handle, CURLOPT_FTP_USE_EPSV, 0);
+    curl_easy_setopt(handle->handle, CURLOPT_UPLOAD, 0);
+    curl_easy_setopt(handle->handle, CURLOPT_URL, source.toStdString().c_str());
+    curl_easy_setopt(handle->handle, CURLOPT_WRITEFUNCTION, download_callback);
+    curl_easy_setopt(handle->handle, CURLOPT_FTP_USE_EPSV, 1);
+    curl_easy_setopt(handle->handle, CURLOPT_DIRLISTONLY, 0);
+    handle->file = fopen(destination.toStdString().c_str(), "wb");
+    curl_easy_setopt(handle->handle, CURLOPT_WRITEDATA, (void*) handle->file);
+    curl_easy_setopt(handle->handle, CURLOPT_FTP_USE_EPSV, 0);
 
-    CURLcode result = curl_easy_perform(handle);
-    curl_easy_cleanup(handle);
+    curl_multi_add_handle(curl_multi_handle, handle->handle);
+    curl_multi_perform(curl_multi_handle, &running_handles);
 
-    fclose(local_file);
-
-    if (result == CURLE_OK)
-        return true;
-    return false;
+    easy_handles.push_back(handle);
 }
 
 QStringList FTP_Controller::get_directory_listing(QString url)
@@ -166,4 +164,35 @@ bool FTP_Controller::mkdir(QString str)
         return true;
 
     return false;
+}
+
+void FTP_Controller::multi_perform()
+{
+    curl_multi_perform(curl_multi_handle, &running_handles);
+//    qDebug () << "Running: " << running_handles;
+
+    CURLMsg* m;
+    do {
+        int msgq = 0;
+        m = curl_multi_info_read(curl_multi_handle, &msgq);
+        if (m && (m->msg == CURLMSG_DONE))
+        {
+            int counter=0;
+            for (size_t i =0; i < easy_handles.size(); ++i)
+            {
+                if (easy_handles[i]->handle == m->easy_handle)
+                {
+                    counter = i;
+//                    qDebug () << "Closing file";
+                    fclose(easy_handles[i]->file);
+                }
+            }
+//            qDebug () << "Cleaning handle.";
+            curl_easy_cleanup(m->easy_handle);
+            curl_multi_perform(curl_multi_handle, &running_handles);
+            // tell the log it's done
+
+            easy_handles.erase(easy_handles.begin() + counter);
+        }
+    } while (m);
 }

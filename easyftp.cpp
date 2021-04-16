@@ -1,6 +1,8 @@
 #include "easyftp.h"
 #include "ui_easyftp.h"
 
+#include <QTimer>
+
 const QString ICON_NORMAL = ":/icons/icon_dir_normal.png";
 const QString ICON_UNKNOWN = ":/icons/icon_dir_unknown.png";
 const QString ICON_FILE = ":/icons/icon_file_normal.png";
@@ -58,6 +60,7 @@ EasyFTP::EasyFTP(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::EasyFTP)
     , ftp(new FTP_Controller(this))
+    , timer(new QTimer(this))
 {
     ui->setupUi(this);
     ui_init();
@@ -69,7 +72,8 @@ EasyFTP::EasyFTP(QWidget *parent)
     ui->in_user->setText("test");
     ui->in_pass->setText("test");
 
-    connect (&queue, SIGNAL(list_changed()), this, SLOT(perform_queue()));
+    connect (&queue, SIGNAL(list_changed()), this, SLOT(queue_changed()));
+    connect (timer, &QTimer::timeout, this, QOverload<>::of(&EasyFTP::perform_queue));
 }
 
 EasyFTP::~EasyFTP()
@@ -303,6 +307,7 @@ void EasyFTP::localTreeItemUploadClicked()
     QString local_path = local_tree->le->text();
     QString remote_path = remote_tree->le->text();
     add_for_upload(info.absolutePath(), info.fileName(), remote_path);
+    qDebug() << "Done adding to uploading";
 }
 
 void EasyFTP::localListUploadClicked()
@@ -311,6 +316,7 @@ void EasyFTP::localListUploadClicked()
     QString remote_path = remote_tree->le->text();
     for (QListWidgetItem *item : local_list->selectedItems())
         add_for_upload(local_path, item->text(), remote_path);
+    qDebug() << "Done adding to uploading";
 }
 
 void EasyFTP::add_for_upload(QString local_path, QString filename, QString remote_path)
@@ -328,10 +334,12 @@ void EasyFTP::add_for_upload(QString local_path, QString filename, QString remot
         if (!remote_path.startsWith(remove_trailing_slash(host)))
             remote_path.push_front(remove_trailing_slash(host));
         log("Uploading file: " + file_path + " to destination: " + remote_path + filename+"\n");
-        if (!ftp->upload(file_path,  remote_path + filename))
-            log("!!!\tFailed to upload file: " + file_path + " to destination: " + remote_path + filename + "\t!!!\n");
-        else
-            log("Uploaded file: " + file_path + " to destination: " + remote_path + filename+"\n");
+//        ftp->upload(file_path,  remote_path + filename);
+        queue.add_to_queue(file_path, remote_path + filename, Queue::Item::Type::UPLOAD);
+//        if (!ftp->upload(file_path,  remote_path + filename))
+//            log("!!!\tFailed to upload file: " + file_path + " to destination: " + remote_path + filename + "\t!!!\n");
+//        else
+//            log("Uploaded file: " + file_path + " to destination: " + remote_path + filename+"\n");
     }
     else if (QFileInfo(file_path).isDir())
     {
@@ -493,15 +501,59 @@ void EasyFTP::add_for_download(QString remote_url, QString filename, QString loc
     {
         QString local_file_path = local_path + filename;
         log("Downloading file: " + remote_file_url + " to: " + local_file_path+"\n");
-        if (!ftp->download(remote_file_url, local_file_path))
-            log("!!!\tFailed to download file: " + remote_file_url + " to: " + local_file_path + "\t!!!\n");
-        else
-            log("Downloaded file: " + remote_file_url + " to: " + local_file_path+"\n");
+        queue.add_to_queue(remote_file_url, local_file_path, Queue::Item::Type::DOWNLOAD);
+//        ftp->download(remote_file_url, local_file_path);
+//        if (!ftp->download(remote_file_url, local_file_path))
+//            log("!!!\tFailed to download file: " + remote_file_url + " to: " + local_file_path + "\t!!!\n");
+//        else
+//            log("Downloaded file: " + remote_file_url + " to: " + local_file_path+"\n");
     }
+}
+
+void EasyFTP::queue_changed()
+{
+    if (!timer->isActive())
+    {
+        qDebug () << "Queue has changed, starting timer";
+        timer->start(1);
+    }
+}
+
+int EasyFTP::queue_append(QString src, QString dest)
+{
+    ui->queue->append(
+                src +
+                "\t>\t" +
+                dest
+                );
+    // return the ID in table
+    return 0;
+}
+
+void EasyFTP::queue_at(int n)
+{
+    // return the row in table,
 }
 
 void EasyFTP::perform_queue()
 {
+    //    qDebug()<< "Inqueue handles: " << ftp->num_handles;
+    ftp->multi_perform();
+    //    qDebug () << "After calling, handles are: " << ftp->running_handles;
+    if (ftp->running_handles>=3)
+    {
+        return;
+    }
+
+    if ( ftp->running_handles == 0 && queue.size() == 0 /* there is no more running */ )
+    {
+        qDebug () << "No more running handles, no queue, stopping timer";
+        timer->stop();
+    }
+
+    if (queue.size()<1)
+        return;
+
     Queue::Item item = queue.front();
     qDebug () << "Source: " << item.source << " Destination: " << item.destination;
     queue.pop_front();
@@ -509,29 +561,33 @@ void EasyFTP::perform_queue()
     if (item.type == Queue::Item::Type::UPLOAD)
     {
         ftp->upload(item.source, item.destination);
-        ui->queue->append(
-                    "Upload:\t" +
-                    item.source +
-                    "\t>\t" +
-                    item.destination
-                    );
+
+        //        ftp->upload(item.source, item.destination);
+        //        ui->queue->append(
+        //                    "Upload:\t" +
+        //                    item.source +
+        //                    "\t>\t" +
+        //                    item.destination
+        //                    );
     }
     else if (item.type == Queue::Item::Type::DOWNLOAD)
     {
         ftp->download(item.source, item.destination);
-        ui->queue->append(
-                    "Download:\t" +
-                    item.source +
-                    "\t>\t" +
-                    item.destination
-                    );
+        //        ui->queue->append(
+        //                    "Download:\t" +
+        //                    item.source +
+        //                    "\t>\t" +
+        //                    item.destination
+        //                    );
     }
-    CURLcode result = ftp->perform();
-    if (result == CURLE_OK)
-        ui->queue->append("|OKAY|");
-    else {
-        ui->queue->append("|NOT OKAY|");
-        qDebug () << "Not okay with code " << result;
-    }
-    ftp->set_option(CURLOPT_DIRLISTONLY, 1);
+    //    CURLcode result = ftp->perform();
+    //    if (result == CURLE_OK)
+    //        ui->queue->append("|OKAY|");
+    //    else {
+    //        ui->queue->append("|NOT OKAY|");
+    //        qDebug () << "Not okay with code " << result;
+    //    }
+    //    ftp->set_option(CURLOPT_DIRLISTONLY, 1);
+
+
 }

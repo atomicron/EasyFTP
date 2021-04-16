@@ -54,6 +54,10 @@ public slots:
     void add_for_download(QString remote_url, QString filename, QString local_path);
 
     void perform_queue();
+    void queue_changed();
+
+    int queue_append(QString src, QString dest);
+    void queue_at(int n);
 
 private slots:
     void on_btn_connect_clicked();
@@ -64,6 +68,7 @@ private:
     QFileSystemModel *local_fs_model;
     QStandardItemModel* remote_fs_model = nullptr;
     Queue queue;
+    QTimer* timer;
 
 private:
     Tree* local_tree;

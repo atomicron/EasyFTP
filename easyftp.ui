@@ -112,7 +112,6 @@
         </widget>
        </widget>
       </widget>
-      <widget class="QTextEdit" name="aqueue"/>
       <widget class="QTableWidget" name="queue"/>
      </widget>
     </item>
